@@ -1,19 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
-void sort(int arr[], int n) {
-    for (int i = 0; i < n - 1; i++)
-        for (int j = 0; j < n - i - 1; j++)
-            if (arr[j] > arr[j + 1]) {
-                int t = arr[j];
-                arr[j] = arr[j + 1];
-                arr[j + 1] = t;
-            }
+// Comparator for qsort
+int compare(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
 }
 
 void SCAN(int req[], int n, int head, int disk_size) {
     int total = 0, pos = head;
-    sort(req, n);
+
+    // Sort the request queue
+    qsort(req, n, sizeof(int), compare);
 
     printf("\n--- SCAN Disk Scheduling ---\n");
     printf("Sequence of Head Movement: %d", head);
@@ -23,21 +21,21 @@ void SCAN(int req[], int n, int head, int disk_size) {
         if (req[i] >= head)
             break;
 
-    // move towards higher end
+    // Move towards higher end
     for (int j = i; j < n; j++) {
         total += abs(req[j] - pos);
         pos = req[j];
         printf(" -> %d", pos);
     }
 
-    // go to disk end
+    // Go to disk end
     if (pos != disk_size - 1) {
         total += abs((disk_size - 1) - pos);
         pos = disk_size - 1;
         printf(" -> %d", pos);
     }
 
-    // then reverse direction
+    // Reverse direction
     for (int j = i - 1; j >= 0; j--) {
         total += abs(req[j] - pos);
         pos = req[j];
@@ -65,5 +63,6 @@ int main() {
     scanf("%d", &disk_size);
 
     SCAN(req, n, head, disk_size);
+
     return 0;
 }
