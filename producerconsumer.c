@@ -3,77 +3,65 @@
 #include <semaphore.h>
 #include <unistd.h>
 
-#define SIZE 5
+#define BUFFER_SIZE 5
 
-int buffer[SIZE], in = 0, out = 0;
-int produced_count = 0, consumed_count = 0;
+int buffer[BUFFER_SIZE];
+int in = 0, out = 0;
 
-sem_t empty, full;
 pthread_mutex_t mutex;
+sem_t empty, full;
 
-void produce_item(int item) {
-    sem_wait(&empty);
-    pthread_mutex_lock(&mutex);
+void *producer(void *arg) {
+    int item;
+    for(int i=0;i<10;i++) {
+        item = i+1;
+        sem_wait(&empty);           // wait for empty slot
+        pthread_mutex_lock(&mutex); // lock buffer
 
-    buffer[in] = item;
-    printf("Produced %d at %d\n", item, in);
-    in = (in + 1) % SIZE;
-    produced_count++;
+        buffer[in] = item;
+        printf("Producer produced: %d\n", item);
+        in = (in + 1) % BUFFER_SIZE;
 
-    pthread_mutex_unlock(&mutex);
-    sem_post(&full);
+        pthread_mutex_unlock(&mutex); // unlock buffer
+        sem_post(&full);              // signal full slot
+        sleep(1);
+    }
+    return NULL;
 }
 
-void consume_item() {
-    sem_wait(&full);
-    pthread_mutex_lock(&mutex);
+void *consumer(void *arg) {
+    int item;
+    for(int i=0;i<10;i++) {
+        sem_wait(&full);             // wait for full slot
+        pthread_mutex_lock(&mutex);  // lock buffer
 
-    int item = buffer[out];
-    printf("Consumed %d at %d\n", item, out);
-    out = (out + 1) % SIZE;
-    consumed_count++;
+        item = buffer[out];
+        printf("Consumer consumed: %d\n", item);
+        out = (out + 1) % BUFFER_SIZE;
 
-    pthread_mutex_unlock(&mutex);
-    sem_post(&empty);
+        pthread_mutex_unlock(&mutex); // unlock buffer
+        sem_post(&empty);             // signal empty slot
+        sleep(2);
+    }
+    return NULL;
 }
 
 int main() {
-    sem_init(&empty, 0, SIZE);
-    sem_init(&full, 0, 0);
+    pthread_t prod, cons;
+
     pthread_mutex_init(&mutex, NULL);
+    sem_init(&empty, 0, BUFFER_SIZE);
+    sem_init(&full, 0, 0);
 
-    int choice, item;
+    pthread_create(&prod, NULL, producer, NULL);
+    pthread_create(&cons, NULL, consumer, NULL);
 
-    while (1) {
-        printf("\nEnter:\n1 to Produce\n2 to Consume\n3 to Exit\nChoice: ");
-        scanf("%d", &choice);
+    pthread_join(prod, NULL);
+    pthread_join(cons, NULL);
 
-        if (choice == 1) {
-            if (produced_count - consumed_count == SIZE) {
-                printf("Buffer full! Cannot produce more items now.\n");
-                continue;
-            }
-            printf("Enter item to produce: ");
-            scanf("%d", &item);
-            produce_item(item);
-        } else if (choice == 2) {
-            if (produced_count == consumed_count) {
-                printf("No items to consume.\n");
-                continue;
-            }
-            consume_item();
-        } else if (choice == 3) {
-            printf("Exiting...\n");
-            break;
-        } else {
-            printf("Invalid choice! Try again.\n");
-        }
-    }
-
+    pthread_mutex_destroy(&mutex);
     sem_destroy(&empty);
     sem_destroy(&full);
-    pthread_mutex_destroy(&mutex);
 
     return 0;
 }
-
