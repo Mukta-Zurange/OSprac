@@ -1,16 +1,20 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 pthread_mutex_t mutex;  // protects read_count
 pthread_mutex_t wrt;    // protects writing
 int read_count = 0;     // number of active readers
 int shared_data = 0;    // the data being read/written
 
-void reader(int id) {
+void *reader(void *arg) {
+    int id = *(int*)arg;
+    free(arg);
+
     pthread_mutex_lock(&mutex);
     read_count++;
-    if (read_count == 1) // first reader locks writer
+    if (read_count == 1)  // first reader locks writer
         pthread_mutex_lock(&wrt);
     pthread_mutex_unlock(&mutex);
 
@@ -20,12 +24,17 @@ void reader(int id) {
 
     pthread_mutex_lock(&mutex);
     read_count--;
-    if (read_count == 0) // last reader unlocks writer
+    if (read_count == 0)  // last reader unlocks writer
         pthread_mutex_unlock(&wrt);
     pthread_mutex_unlock(&mutex);
+
+    return NULL;
 }
 
-void writer(int id) {
+void *writer(void *arg) {
+    int id = *(int*)arg;
+    free(arg);
+
     pthread_mutex_lock(&wrt); // lock for writing
 
     // Writing section
@@ -35,6 +44,7 @@ void writer(int id) {
     sleep(1); // simulate writing
 
     pthread_mutex_unlock(&wrt); // unlock after writing
+    return NULL;
 }
 
 int main() {
@@ -48,9 +58,17 @@ int main() {
         scanf("%d", &choice);
 
         if (choice == 1) {
-            reader(id++);
+            pthread_t t;
+            int *arg = malloc(sizeof(*arg));
+            *arg = id++;
+            pthread_create(&t, NULL, reader, arg);
+            pthread_detach(t); // detach so it runs concurrently
         } else if (choice == 2) {
-            writer(id++);
+            pthread_t t;
+            int *arg = malloc(sizeof(*arg));
+            *arg = id++;
+            pthread_create(&t, NULL, writer, arg);
+            pthread_join(t, NULL); // wait for writer to finish
         } else if (choice == 3) {
             printf("Exiting...\n");
             break;
