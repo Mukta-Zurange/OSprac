@@ -1,21 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void sort(int arr[], int n) {
-    for (int i = 0; i < n - 1; i++)
-        for (int j = 0; j < n - i - 1; j++)
-            if (arr[j] > arr[j + 1]) {
-                int t = arr[j];
-                arr[j] = arr[j + 1];
-                arr[j + 1] = t;
-            }
+// Comparison function for qsort
+int compare(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
 }
 
 void CLOOK(int req[], int n, int head) {
     int total = 0, pos = head;
-    sort(req, n);
 
-    printf("\n--- C-LOOK Disk Scheduling ---\n");
+    qsort(req, n, sizeof(int), compare);
+
+    printf("\nC-LOOK Disk Scheduling\n");
     printf("Sequence of Head Movement: %d", head);
 
     int i;
@@ -23,14 +19,14 @@ void CLOOK(int req[], int n, int head) {
         if (req[i] >= head)
             break;
 
-    // move from head to the end of higher requests
+    // Move from head towards higher requests
     for (int j = i; j < n; j++) {
         total += abs(req[j] - pos);
         pos = req[j];
         printf(" -> %d", pos);
     }
 
-    // jump back to the lowest request (circular movement)
+    // Jump to the lowest request (circular movement)
     if (i > 0) {
         total += abs(req[n - 1] - req[0]);
         pos = req[0];
@@ -44,7 +40,6 @@ void CLOOK(int req[], int n, int head) {
     }
 
     printf("\nTotal Head Movement: %d\n", total);
-    
 }
 
 int main() {
